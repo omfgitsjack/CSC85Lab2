@@ -34,6 +34,8 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
 struct particle *resample(void);		
 // Main loop
 void ParticleFilterLoop(void);
+// Helper function to retrieve the corresponding linkedlist item according to index.
+particle *getParticleByIndex(int index);
 
 // OpenGL functions - you DO NOT need to modify or read these
 void initGlut(char* winName);

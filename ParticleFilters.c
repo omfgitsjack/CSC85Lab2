@@ -161,6 +161,7 @@ void initParticles(void)
     } while(hit(&p, map, p.x, p.y));
     p.theta = rand() % 360;
     p.prob = 1.0/n_particles;
+    p.next = NULL;
     // Check if head = null
     if (list != NULL){
       p.next = list;
@@ -245,7 +246,7 @@ void ParticleFilterLoop(void)
 
     int i;
     // Retrieve the struct by dereferencing the address to the particle
-    particle curparticle = *list;
+    particle *curparticle = list;
     while (curparticle!=NULL){
         // Move the robot 'distance' from (x,y) in direction theta
         move(robot, distance);
@@ -256,20 +257,20 @@ void ParticleFilterLoop(void)
         // 2. Check if particle has hit an obstacle or touches a wall.
         // In both cases, set the particle's location to a random x or y (That is 
         // in range)
-        if ((curparticle.x < 0 || curparticle.x > sx-1 || curparticle.y < 0 || curparticle.y > sy-1)
+        if ((curparticle->x < 0 || curparticle->x > sx-1 || curparticle->y < 0 || curparticle->y > sy-1)
             || hit(curparticle, map, sx, sy)){
             do {
                 srand(time(NULL));
                 // Randomize (x,y) coordinates.
-                curparticle.x = rand() % sx;
-                curparticley = rand() % sy; 
-            } while(hit(&curparticle, map, curparticle.x, curparticle.y));
+                curparticle->x = rand() % sx;
+                curparticle->y = rand() % sy; 
+            } while(hit(curparticle, map, curparticle->x, curparticle->y));
          }
       }
       ground_truth(curparticle, map, sx, sy);
       // Check if new position hits a wall
       // Select next particle in list
-      curparticle = *curparticle.next;
+      curparticle = curparticle->next;
     }
 
    /******************************************************************
@@ -327,6 +328,66 @@ void ParticleFilterLoop(void)
    //        the robot's actual location/direction.
    *******************************************************************/
 
+   // This technique, gives a better sample.
+   particle copyp;
+   struct particle *newlist;
+   newlist = NULL;
+   srand(time(NULL));
+   // Select an int between (Including) 1 and n_particles
+   int index = rand() % n_particles;
+   double beta = 0.0;
+   // Gets maximum probability of all particles
+   double maxweight = 0.0;
+   particle *curparticle = list;
+   while (curparticle!=NULL){
+      if (curparticle->prob > maxweight){
+        maxweight = curparticle->prob;
+      }
+      // Choose next item in linked list.
+      curparticle = curparticle->next;
+   }
+
+   // Reinitialize the curparticle pointer to point to head again.
+   // Setup new particle linked list pointer to hold new sample.
+   curparticle = list;
+   particle *newlisthead = NULL;
+   while (curparticle!=NULL){
+      beta += rand() * 2.0 * maxweight;
+      // Call helper function to get the particle according to index.
+      particle *tempparticle = getParticleByIndex(index);
+      int indexprob = tempparticle->prob;
+      while (beta > indexprob){
+        beta -= indexprob;
+        index = (index + 1) % n_particles;
+        // Get the new particle probability
+        tempparticle = getParticleByIndex(index);
+        indexprob = tempparticle->prob;
+      }
+      // Make a copy of the particle object
+      copyp = malloc(sizeof(particle));
+      // Copy the values of original particle.
+      copyp.x = tempparticle.x;
+      copyp.y = tempparticle.y;
+      copyp.theta = tempparticle.theta;
+      copyp.measureD = tempparticle.measureD;
+      copyp.prob = tempparticle.prob;
+      copyp.next = NULL;
+      if (newlisthead!=NULL){
+        copyp.next = newlisthead;
+      } 
+      newlisthead = &copyp;
+      // Choose next item in linked list.
+      curparticle = curparticle->next;
+  }
+  // Deallocate memory of old list.
+  curparticle = list;
+  while (curparticle!=NULL){
+    particle *nextpart = curparticle->next;
+    free(*curparticle);
+    curparticle = nextpart;
+  }
+  // Set list to copyp.
+  list = copyp;
 
 
   }  // End if (!first_frame)
@@ -416,6 +477,21 @@ void ParticleFilterLoop(void)
    gets(&line[0]);
    first_frame=0;
   }
+}
+
+// Helper function that returns the particle by iterating 
+// 'index' times through the linked list.
+// 0 <= index <= n_particle-1,  
+// if L = linked list but indexed, 
+// L[0] = list;
+*particle getParticleByIndex(int index){
+  int i;
+  // Get linked list head.
+  particle *curparticle = list;
+  for (i = 0; i < index; i++){
+    curparticle = curparticle.next;
+  }
+  return curparticle;
 }
 
 /*********************************************************************
