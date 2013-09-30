@@ -204,6 +204,8 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
 
    // if p->measureD[i] = sonar->measureD[i] for ALL i, then the particle is extremely likely to be where the robot's at.
    int i;
+   sonar_measurement(rob, map, sx, sy);
+   ground_truth(p, map, sx, sy);
    for (i = 0; i < len(p->measureD); i++){
     
    }
@@ -245,24 +247,26 @@ void ParticleFilterLoop(void)
     // Retrieve the struct by dereferencing the address to the particle
     particle curparticle = *list;
     while (curparticle!=NULL){
-      // We move the particle 'distance' from (x,y) 
-      move(curparticle, distance);
-      // 1. Check if new position has went over boundary 
-      // OR
-      // 2. Check if particle has hit an obstacle or touches a wall.
-      // In both cases, set the particle's location to a random x or y (That is 
-      // in range)
-      if ((curparticle.x < 0 || curparticle.x > sx-1 || curparticle.y < 0 || curparticle.y > sy-1)
-        || hit(curparticle, map, sx, sy)){
+        // Move the robot 'distance' from (x,y) in direction theta
+        move(robot, distance);
+        // We move the particle 'distance' from (x,y) in direction theta
+        move(curparticle, distance);
+        // 1. Check if new position has went over boundary 
+        // OR
+        // 2. Check if particle has hit an obstacle or touches a wall.
+        // In both cases, set the particle's location to a random x or y (That is 
+        // in range)
+        if ((curparticle.x < 0 || curparticle.x > sx-1 || curparticle.y < 0 || curparticle.y > sy-1)
+            || hit(curparticle, map, sx, sy)){
             do {
-              srand(time(NULL));
-              // Randomize (x,y) coordinates.
-              curparticle.x = rand() % sx;
-              curparticley = rand() % sy; 
+                srand(time(NULL));
+                // Randomize (x,y) coordinates.
+                curparticle.x = rand() % sx;
+                curparticley = rand() % sy; 
             } while(hit(&curparticle, map, curparticle.x, curparticle.y));
          }
       }
-      ground_truth(curparticle);
+      ground_truth(curparticle, map, sx, sy);
       // Check if new position hits a wall
       // Select next particle in list
       curparticle = *curparticle.next;
@@ -322,6 +326,8 @@ void ParticleFilterLoop(void)
    //        Hopefully the largest cluster will be on and around
    //        the robot's actual location/direction.
    *******************************************************************/
+
+
 
   }  // End if (!first_frame)
 
